@@ -5,12 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { Json } from "@/integrations/supabase/types";
 
 interface WorkflowData {
   name: string;
   description: string;
-  nodes?: any[];
-  edges?: any[];
+  nodes: Json | null;
+  edges: Json | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  user_id?: string;
+  id?: string;
 }
 
 const WorkflowEditor = () => {
