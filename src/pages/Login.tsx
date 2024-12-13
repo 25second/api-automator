@@ -15,6 +15,9 @@ const Login = () => {
       if (session) {
         navigate("/dashboard");
       }
+      if (event === 'USER_DELETED' || event === 'SIGNED_OUT') {
+        toast.error("Session ended");
+      }
     });
 
     // Check initial session
@@ -46,10 +49,6 @@ const Login = () => {
             }
           }}
           providers={[]}
-          onError={(error) => {
-            console.error("Auth error:", error);
-            toast.error(error.message);
-          }}
           redirectTo={window.location.origin}
         />
       </div>
