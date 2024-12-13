@@ -1,14 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Json } from "@/integrations/supabase/types";
 import ReactFlow, { 
   Background, 
-  Controls, 
+  Controls,
   Edge,
   Node,
   NodeChange,
@@ -20,14 +16,14 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { ResizablePanelGroup, ResizablePanel } from "@/components/ui/resizable";
-import { CustomNode } from "@/components/workflow/CustomNode";
 import { nodeTypes } from "@/components/workflow/nodeTypes";
+import { WorkflowForm } from "@/components/workflow/WorkflowForm";
+import { WorkflowHeader } from "@/components/workflow/WorkflowHeader";
+import { serializeWorkflowData, deserializeWorkflowData } from "@/utils/workflowUtils";
 
 interface WorkflowData {
   name: string;
   description: string;
-  nodes: Json | null;
-  edges: Json | null;
   created_at?: string | null;
   updated_at?: string | null;
   user_id?: string;
@@ -42,8 +38,6 @@ const WorkflowEditor = () => {
   const [workflow, setWorkflow] = useState<WorkflowData>({
     name: "",
     description: "",
-    nodes: [],
-    edges: []
   });
 
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -78,9 +72,11 @@ const WorkflowEditor = () => {
       return;
     }
 
+    const { nodes: deserializedNodes, edges: deserializedEdges } = deserializeWorkflowData(data.nodes, data.edges);
+    
     setWorkflow(data);
-    if (data.nodes) setNodes(data.nodes as Node[]);
-    if (data.edges) setEdges(data.edges as Edge[]);
+    setNodes(deserializedNodes);
+    setEdges(deserializedEdges);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,10 +88,12 @@ const WorkflowEditor = () => {
       return;
     }
 
+    const { nodes: serializedNodes, edges: serializedEdges } = serializeWorkflowData(nodes, edges);
+
     const workflowData = {
       ...workflow,
-      nodes,
-      edges,
+      nodes: serializedNodes,
+      edges: serializedEdges,
       user_id: session.user.id,
     };
 
@@ -168,54 +166,23 @@ const WorkflowEditor = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">
-            {isEditing ? "Edit Workflow" : "Create New Workflow"}
-          </h1>
-          <div className="flex gap-4">
-            {isEditing && (
-              <Button onClick={handleRun}>
-                Run Workflow
-              </Button>
-            )}
-            <Button onClick={() => navigate("/dashboard")} variant="outline">
-              Back to Dashboard
-            </Button>
-          </div>
-        </div>
+        <WorkflowHeader 
+          isEditing={isEditing}
+          onBack={() => navigate("/dashboard")}
+          onRun={isEditing ? handleRun : undefined}
+        />
 
         <ResizablePanelGroup direction="vertical" className="min-h-[600px] rounded-lg border">
           <ResizablePanel defaultSize={25}>
             <div className="p-6">
-              <form className="space-y-4">
-                <div className="space-y-2">
-                  <label htmlFor="name" className="text-sm font-medium">
-                    Name
-                  </label>
-                  <Input
-                    id="name"
-                    value={workflow.name}
-                    onChange={(e) => setWorkflow({ ...workflow, name: e.target.value })}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label htmlFor="description" className="text-sm font-medium">
-                    Description
-                  </label>
-                  <Textarea
-                    id="description"
-                    value={workflow.description}
-                    onChange={(e) => setWorkflow({ ...workflow, description: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <Button type="submit" onClick={handleSubmit}>
-                  {isEditing ? "Update Workflow" : "Create Workflow"}
-                </Button>
-              </form>
+              <WorkflowForm
+                name={workflow.name}
+                description={workflow.description}
+                onNameChange={(name) => setWorkflow({ ...workflow, name })}
+                onDescriptionChange={(description) => setWorkflow({ ...workflow, description })}
+                onSubmit={handleSubmit}
+                isEditing={isEditing}
+              />
             </div>
           </ResizablePanel>
           
