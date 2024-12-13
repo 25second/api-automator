@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
+import ReactFlow, { 
+  Background, 
+  Controls, 
+  Edge,
+  Node,
+  NodeChange,
+  EdgeChange,
+  Connection,
+  addEdge,
+  applyNodeChanges,
+  applyEdgeChanges
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+import { ResizablePanelGroup, ResizablePanel } from "@/components/ui/resizable";
+import { CustomNode } from "@/components/workflow/CustomNode";
+import { nodeTypes } from "@/components/workflow/nodeTypes";
 
 interface WorkflowData {
   name: string;
@@ -29,6 +45,9 @@ const WorkflowEditor = () => {
     nodes: [],
     edges: []
   });
+
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -60,6 +79,8 @@ const WorkflowEditor = () => {
     }
 
     setWorkflow(data);
+    if (data.nodes) setNodes(data.nodes as Node[]);
+    if (data.edges) setEdges(data.edges as Edge[]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,6 +94,8 @@ const WorkflowEditor = () => {
 
     const workflowData = {
       ...workflow,
+      nodes,
+      edges,
       user_id: session.user.id,
     };
 
@@ -106,51 +129,113 @@ const WorkflowEditor = () => {
     navigate("/dashboard");
   };
 
-  return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">
-          {isEditing ? "Edit Workflow" : "Create New Workflow"}
-        </h1>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label htmlFor="name" className="text-sm font-medium">
-              Name
-            </label>
-            <Input
-              id="name"
-              value={workflow.name}
-              onChange={(e) => setWorkflow({ ...workflow, name: e.target.value })}
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="description" className="text-sm font-medium">
-              Description
-            </label>
-            <Textarea
-              id="description"
-              value={workflow.description}
-              onChange={(e) => setWorkflow({ ...workflow, description: e.target.value })}
-              required
-            />
-          </div>
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    []
+  );
 
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    []
+  );
+
+  const onConnect = useCallback(
+    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
+    []
+  );
+
+  const handleRun = async () => {
+    toast.info("Running workflow...");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/login");
+        return;
+      }
+
+      const { error } = await supabase.functions.invoke('run-workflow', {
+        body: { workflowId: id },
+      });
+
+      if (error) throw error;
+      toast.success("Workflow completed successfully");
+    } catch (error) {
+      console.error("Error running workflow:", error);
+      toast.error("Error running workflow");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto p-6">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">
+            {isEditing ? "Edit Workflow" : "Create New Workflow"}
+          </h1>
           <div className="flex gap-4">
-            <Button type="submit">
-              {isEditing ? "Update Workflow" : "Create Workflow"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/dashboard")}
-            >
-              Cancel
+            {isEditing && (
+              <Button onClick={handleRun}>
+                Run Workflow
+              </Button>
+            )}
+            <Button onClick={() => navigate("/dashboard")} variant="outline">
+              Back to Dashboard
             </Button>
           </div>
-        </form>
+        </div>
+
+        <ResizablePanelGroup direction="vertical" className="min-h-[600px] rounded-lg border">
+          <ResizablePanel defaultSize={25}>
+            <div className="p-6">
+              <form className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="name" className="text-sm font-medium">
+                    Name
+                  </label>
+                  <Input
+                    id="name"
+                    value={workflow.name}
+                    onChange={(e) => setWorkflow({ ...workflow, name: e.target.value })}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="description" className="text-sm font-medium">
+                    Description
+                  </label>
+                  <Textarea
+                    id="description"
+                    value={workflow.description}
+                    onChange={(e) => setWorkflow({ ...workflow, description: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <Button type="submit" onClick={handleSubmit}>
+                  {isEditing ? "Update Workflow" : "Create Workflow"}
+                </Button>
+              </form>
+            </div>
+          </ResizablePanel>
+          
+          <ResizablePanel defaultSize={75}>
+            <div className="h-full">
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                nodeTypes={nodeTypes}
+                fitView
+              >
+                <Background />
+                <Controls />
+              </ReactFlow>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
     </div>
   );
