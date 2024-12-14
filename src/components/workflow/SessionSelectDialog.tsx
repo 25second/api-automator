@@ -38,26 +38,41 @@ export const SessionSelectDialog = ({
   useEffect(() => {
     const fetchSessions = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:40080/sessions', {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          },
-          // Important: these options allow requests to localhost
-          mode: 'cors',
-          credentials: 'omit'
-        });
+        // Open a new tab with the sessions endpoint
+        const newTab = window.open('http://127.0.0.1:40080/sessions', '_blank');
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (!newTab) {
+          throw new Error('Popup was blocked. Please allow popups for this site.');
         }
-        
-        const data = await response.json();
-        console.log('Fetched sessions:', data); // Debug log
-        setSessions(data);
+
+        // Listen for messages from the new tab
+        const messageHandler = (event: MessageEvent) => {
+          if (event.origin === 'http://127.0.0.1:40080') {
+            try {
+              const data = JSON.parse(event.data);
+              console.log('Received sessions:', data);
+              setSessions(data);
+              // Close the tab after receiving data
+              newTab.close();
+            } catch (error) {
+              console.error('Error parsing session data:', error);
+              toast.error("Failed to parse session data");
+            }
+          }
+        };
+
+        window.addEventListener('message', messageHandler);
+
+        // Cleanup
+        return () => {
+          window.removeEventListener('message', messageHandler);
+          if (newTab && !newTab.closed) {
+            newTab.close();
+          }
+        };
       } catch (error) {
         console.error('Error fetching sessions:', error);
-        toast.error("Failed to fetch browser sessions. Make sure the local API is running.");
+        toast.error("Failed to fetch browser sessions. Make sure the local API is running and popups are allowed.");
       } finally {
         setLoading(false);
       }
@@ -65,6 +80,9 @@ export const SessionSelectDialog = ({
 
     if (open) {
       fetchSessions();
+    } else {
+      // Reset selections when dialog closes
+      setSelectedSessions(new Set());
     }
   }, [open]);
 
@@ -95,6 +113,7 @@ export const SessionSelectDialog = ({
           <DialogTitle>Select Browser Sessions</DialogTitle>
           <DialogDescription>
             Choose the browser sessions to run this workflow with.
+            Please allow popups if prompted.
           </DialogDescription>
         </DialogHeader>
         
@@ -104,7 +123,7 @@ export const SessionSelectDialog = ({
           </div>
         ) : sessions.length === 0 ? (
           <div className="py-6 text-center text-muted-foreground">
-            No browser sessions found. Make sure the local API is running.
+            No browser sessions found. Make sure the local API is running and popups are allowed.
           </div>
         ) : (
           <div className="py-6">
