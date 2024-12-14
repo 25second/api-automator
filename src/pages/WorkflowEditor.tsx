@@ -21,15 +21,28 @@ import { nodeTypes } from "@/components/workflow/nodeTypes";
 import { WorkflowForm } from "@/components/workflow/WorkflowForm";
 import { WorkflowHeader } from "@/components/workflow/WorkflowHeader";
 import { NodesPanel } from "@/components/workflow/NodesPanel";
+import { SessionSelectDialog } from "@/components/workflow/SessionSelectDialog";
 import { serializeWorkflowData, deserializeWorkflowData } from "@/utils/workflowUtils";
+import { Json } from "@/integrations/supabase/types";
 
 interface WorkflowData {
   name: string;
   description: string;
+  nodes?: Json;
+  edges?: Json;
   created_at?: string | null;
   updated_at?: string | null;
   user_id?: string;
   id?: string;
+}
+
+interface Session {
+  name: string;
+  proxy: {
+    protocol: string;
+  };
+  status: string;
+  uuid: string;
 }
 
 const WorkflowEditor = () => {
@@ -38,6 +51,7 @@ const WorkflowEditor = () => {
   const isEditing = id !== "new";
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+  const [showSessionDialog, setShowSessionDialog] = useState(false);
   
   const [workflow, setWorkflow] = useState<WorkflowData>({
     name: "",
@@ -131,6 +145,34 @@ const WorkflowEditor = () => {
     navigate("/dashboard");
   };
 
+  const handleRun = async () => {
+    setShowSessionDialog(true);
+  };
+
+  const handleRunWithSessions = async (selectedSessions: Session[]) => {
+    toast.info("Running workflow with selected sessions...");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/login");
+        return;
+      }
+
+      const { error } = await supabase.functions.invoke('run-workflow', {
+        body: { 
+          workflowId: id,
+          sessions: selectedSessions.map(s => s.uuid)
+        },
+      });
+
+      if (error) throw error;
+      toast.success("Workflow started successfully");
+    } catch (error) {
+      console.error("Error running workflow:", error);
+      toast.error("Error running workflow");
+    }
+  };
+
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
     []
@@ -182,27 +224,6 @@ const WorkflowEditor = () => {
     [reactFlowInstance, nodes]
   );
 
-  const handleRun = async () => {
-    toast.info("Running workflow...");
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/login");
-        return;
-      }
-
-      const { error } = await supabase.functions.invoke('run-workflow', {
-        body: { workflowId: id },
-      });
-
-      if (error) throw error;
-      toast.success("Workflow completed successfully");
-    } catch (error) {
-      console.error("Error running workflow:", error);
-      toast.error("Error running workflow");
-    }
-  };
-
   return (
     <div className="h-screen flex flex-col bg-background">
       <div className="border-b">
@@ -253,6 +274,12 @@ const WorkflowEditor = () => {
           </div>
         </div>
       </div>
+
+      <SessionSelectDialog
+        open={showSessionDialog}
+        onOpenChange={setShowSessionDialog}
+        onConfirm={handleRunWithSessions}
+      />
     </div>
   );
 };
