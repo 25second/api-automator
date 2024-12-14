@@ -5,6 +5,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -37,15 +38,26 @@ export const SessionSelectDialog = ({
   useEffect(() => {
     const fetchSessions = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:40080/sessions');
+        const response = await fetch('http://127.0.0.1:40080/sessions', {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+          // Important: these options allow requests to localhost
+          mode: 'cors',
+          credentials: 'omit'
+        });
+        
         if (!response.ok) {
-          throw new Error('Failed to fetch sessions');
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
         const data = await response.json();
+        console.log('Fetched sessions:', data); // Debug log
         setSessions(data);
       } catch (error) {
         console.error('Error fetching sessions:', error);
-        toast.error("Failed to fetch browser sessions");
+        toast.error("Failed to fetch browser sessions. Make sure the local API is running.");
       } finally {
         setLoading(false);
       }
@@ -81,6 +93,9 @@ export const SessionSelectDialog = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Select Browser Sessions</DialogTitle>
+          <DialogDescription>
+            Choose the browser sessions to run this workflow with.
+          </DialogDescription>
         </DialogHeader>
         
         {loading ? (
@@ -89,7 +104,7 @@ export const SessionSelectDialog = ({
           </div>
         ) : sessions.length === 0 ? (
           <div className="py-6 text-center text-muted-foreground">
-            No browser sessions found
+            No browser sessions found. Make sure the local API is running.
           </div>
         ) : (
           <div className="py-6">
