@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,13 +12,15 @@ import ReactFlow, {
   Connection,
   addEdge,
   applyNodeChanges,
-  applyEdgeChanges
+  applyEdgeChanges,
+  ReactFlowInstance
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { ResizablePanelGroup, ResizablePanel } from "@/components/ui/resizable";
+
 import { nodeTypes } from "@/components/workflow/nodeTypes";
 import { WorkflowForm } from "@/components/workflow/WorkflowForm";
 import { WorkflowHeader } from "@/components/workflow/WorkflowHeader";
+import { NodesPanel } from "@/components/workflow/NodesPanel";
 import { serializeWorkflowData, deserializeWorkflowData } from "@/utils/workflowUtils";
 
 interface WorkflowData {
@@ -34,6 +36,8 @@ const WorkflowEditor = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = id !== "new";
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   
   const [workflow, setWorkflow] = useState<WorkflowData>({
     name: "",
@@ -142,6 +146,42 @@ const WorkflowEditor = () => {
     []
   );
 
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      if (!reactFlowWrapper.current || !reactFlowInstance) return;
+
+      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+      const type = event.dataTransfer.getData('application/reactflow');
+
+      // Check if the dropped element is valid
+      if (typeof type === 'undefined' || !type) {
+        return;
+      }
+
+      const position = reactFlowInstance.project({
+        x: event.clientX - reactFlowBounds.left,
+        y: event.clientY - reactFlowBounds.top,
+      });
+
+      const newNode = {
+        id: `${type}-${nodes.length + 1}`,
+        type: 'custom',
+        position,
+        data: { label: `${type} node` },
+      };
+
+      setNodes((nds) => nds.concat(newNode));
+    },
+    [reactFlowInstance, nodes]
+  );
+
   const handleRun = async () => {
     toast.info("Running workflow...");
     try {
@@ -164,45 +204,50 @@ const WorkflowEditor = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-6">
-        <WorkflowHeader 
-          isEditing={isEditing}
-          onBack={() => navigate("/dashboard")}
-          onRun={isEditing ? handleRun : undefined}
-        />
+    <div className="h-screen flex flex-col bg-background">
+      <WorkflowHeader 
+        isEditing={isEditing}
+        onBack={() => navigate("/dashboard")}
+        onRun={isEditing ? handleRun : undefined}
+      />
 
-        <ResizablePanelGroup direction="vertical" className="min-h-[600px] rounded-lg border">
-          <ResizablePanel defaultSize={25}>
-            <div className="p-6">
-              <WorkflowForm
-                name={workflow.name}
-                description={workflow.description}
-                onNameChange={(name) => setWorkflow({ ...workflow, name })}
-                onDescriptionChange={(description) => setWorkflow({ ...workflow, description })}
-                onSubmit={handleSubmit}
-                isEditing={isEditing}
-              />
-            </div>
-          </ResizablePanel>
-          
-          <ResizablePanel defaultSize={75}>
-            <div className="h-full">
-              <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                nodeTypes={nodeTypes}
-                fitView
-              >
-                <Background />
-                <Controls />
-              </ReactFlow>
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+      <div className="flex-1 flex">
+        {/* Nodes Panel */}
+        <div className="w-64 border-r bg-muted/10">
+          <NodesPanel />
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          <div className="p-4 border-b">
+            <WorkflowForm
+              name={workflow.name}
+              description={workflow.description}
+              onNameChange={(name) => setWorkflow({ ...workflow, name })}
+              onDescriptionChange={(description) => setWorkflow({ ...workflow, description })}
+              onSubmit={handleSubmit}
+              isEditing={isEditing}
+            />
+          </div>
+
+          <div className="flex-1" ref={reactFlowWrapper}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onInit={setReactFlowInstance}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              nodeTypes={nodeTypes}
+              fitView
+            >
+              <Background />
+              <Controls />
+            </ReactFlow>
+          </div>
+        </div>
       </div>
     </div>
   );
