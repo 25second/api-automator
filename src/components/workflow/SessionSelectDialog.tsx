@@ -5,7 +5,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -38,41 +37,15 @@ export const SessionSelectDialog = ({
   useEffect(() => {
     const fetchSessions = async () => {
       try {
-        // Open a new tab with the sessions endpoint
-        const newTab = window.open('http://127.0.0.1:40080/sessions', '_blank');
-        
-        if (!newTab) {
-          throw new Error('Popup was blocked. Please allow popups for this site.');
+        const response = await fetch('http://127.0.0.1:40080/sessions');
+        if (!response.ok) {
+          throw new Error('Failed to fetch sessions');
         }
-
-        // Listen for messages from the new tab
-        const messageHandler = (event: MessageEvent) => {
-          if (event.origin === 'http://127.0.0.1:40080') {
-            try {
-              const data = JSON.parse(event.data);
-              console.log('Received sessions:', data);
-              setSessions(data);
-              // Close the tab after receiving data
-              newTab.close();
-            } catch (error) {
-              console.error('Error parsing session data:', error);
-              toast.error("Failed to parse session data");
-            }
-          }
-        };
-
-        window.addEventListener('message', messageHandler);
-
-        // Cleanup
-        return () => {
-          window.removeEventListener('message', messageHandler);
-          if (newTab && !newTab.closed) {
-            newTab.close();
-          }
-        };
+        const data = await response.json();
+        setSessions(data);
       } catch (error) {
         console.error('Error fetching sessions:', error);
-        toast.error("Failed to fetch browser sessions. Make sure the local API is running and popups are allowed.");
+        toast.error("Failed to fetch browser sessions");
       } finally {
         setLoading(false);
       }
@@ -80,9 +53,6 @@ export const SessionSelectDialog = ({
 
     if (open) {
       fetchSessions();
-    } else {
-      // Reset selections when dialog closes
-      setSelectedSessions(new Set());
     }
   }, [open]);
 
@@ -111,10 +81,6 @@ export const SessionSelectDialog = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Select Browser Sessions</DialogTitle>
-          <DialogDescription>
-            Choose the browser sessions to run this workflow with.
-            Please allow popups if prompted.
-          </DialogDescription>
         </DialogHeader>
         
         {loading ? (
@@ -123,7 +89,7 @@ export const SessionSelectDialog = ({
           </div>
         ) : sessions.length === 0 ? (
           <div className="py-6 text-center text-muted-foreground">
-            No browser sessions found. Make sure the local API is running and popups are allowed.
+            No browser sessions found
           </div>
         ) : (
           <div className="py-6">
