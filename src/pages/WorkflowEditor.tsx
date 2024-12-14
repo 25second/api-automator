@@ -205,11 +205,15 @@ const WorkflowEditor = () => {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      <WorkflowHeader 
-        isEditing={isEditing}
-        onBack={() => navigate("/dashboard")}
-        onRun={isEditing ? handleRun : undefined}
-      />
+      <div className="border-b">
+        <div className="container py-2">
+          <WorkflowHeader 
+            isEditing={isEditing}
+            onBack={() => navigate("/dashboard")}
+            onRun={isEditing ? handleRun : undefined}
+          />
+        </div>
+      </div>
 
       <div className="flex-1 flex">
         {/* Nodes Panel */}
@@ -219,7 +223,7 @@ const WorkflowEditor = () => {
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
-          <div className="p-4 border-b">
+          <div className="border-b px-4 py-2">
             <WorkflowForm
               name={workflow.name}
               description={workflow.description}
