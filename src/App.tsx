@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import WorkflowEditor from "./pages/WorkflowEditor";
+import Sessions from "./pages/Sessions";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const App = () => {
               <Route path="/login" element={<Login />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/workflow/:id" element={<WorkflowEditor />} />
+              <Route path="/sessions" element={<Sessions />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </TooltipProvider>
