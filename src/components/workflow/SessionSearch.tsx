@@ -9,7 +9,7 @@ interface SessionSearchProps {
 
 export const SessionSearch = ({ value, onChange }: SessionSearchProps) => {
   return (
-    <div className="relative mb-4">
+    <div className="relative">
       <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
       <Input
         placeholder="Search sessions..."

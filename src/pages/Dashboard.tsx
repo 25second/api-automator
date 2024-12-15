@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Edit, Play } from "lucide-react";
+import { Plus, Trash2, Edit, Play, ListBrowser } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -77,7 +77,6 @@ const Dashboard = () => {
   };
 
   const handleRun = (id: string) => {
-    // This will be implemented in the next phase
     toast.info("Run workflow functionality coming soon!");
   };
 
@@ -86,10 +85,16 @@ const Dashboard = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">My Workflows</h1>
-          <Button onClick={handleCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Workflow
-          </Button>
+          <div className="flex gap-4">
+            <Button onClick={() => navigate('/sessions')} variant="outline">
+              <ListBrowser className="mr-2 h-4 w-4" />
+              Browser Sessions
+            </Button>
+            <Button onClick={handleCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Workflow
+            </Button>
+          </div>
         </div>
         
         <div className="bg-card rounded-lg shadow">

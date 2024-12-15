@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Download } from "lucide-react";
 import { SessionSearch } from "./SessionSearch";
 import { SessionListItem } from "./SessionListItem";
+import { useSessionPolling } from "./useSessionPolling";
 
 interface Session {
   name: string;
@@ -37,36 +38,12 @@ export const SessionSelectDialog = ({
   onOpenChange,
   onConfirm,
 }: SessionSelectDialogProps) => {
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const { sessions, setSessions, loading } = useSessionPolling();
   const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set());
   const [startedSessions, setStartedSessions] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isHeadless, setIsHeadless] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-
-  useEffect(() => {
-    const fetchSessions = async () => {
-      try {
-        const response = await fetch('http://127.0.0.1:40080/sessions');
-        if (!response.ok) {
-          throw new Error('Failed to fetch sessions');
-        }
-        const data = await response.json();
-        console.log('Fetched sessions:', data);
-        setSessions(data);
-      } catch (error) {
-        console.error('Error fetching sessions:', error);
-        toast.error("Failed to fetch browser sessions");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (open) {
-      fetchSessions();
-    }
-  }, [open]);
 
   const handleCheckboxChange = (uuid: string, checked: boolean) => {
     setSelectedSessions(prev => {
