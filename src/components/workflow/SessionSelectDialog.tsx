@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +8,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Search, Download, CheckCircle2 } from "lucide-react";
+import { Download } from "lucide-react";
+import { SessionSearch } from "./SessionSearch";
+import { SessionListItem } from "./SessionListItem";
 
 interface Session {
   name: string;
@@ -42,6 +43,7 @@ export const SessionSelectDialog = ({
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isHeadless, setIsHeadless] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -116,22 +118,24 @@ export const SessionSelectDialog = ({
     }
   };
 
-  const handleConfirm = async () => {
+  const handleStartSessions = async () => {
+    setIsStarting(true);
     const selectedSessionObjects = sessions.filter(session => 
       selectedSessions.has(session.uuid)
     );
 
-    // Start all selected sessions
     for (const session of selectedSessionObjects) {
       await startSession(session.uuid);
     }
-
-    onConfirm(selectedSessionObjects);
+    setIsStarting(false);
   };
 
+  const allSelectedSessionsStarted = Array.from(selectedSessions).every(uuid => 
+    startedSessions.has(uuid)
+  );
+
   const filteredSessions = sessions.filter(session =>
-    selectedSessions.has(session.uuid) || 
-    (session.name.toLowerCase().includes(searchQuery.toLowerCase()) && !startedSessions.has(session.uuid))
+    session.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -144,15 +148,7 @@ export const SessionSelectDialog = ({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="relative mb-4">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search sessions..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
-          />
-        </div>
+        <SessionSearch value={searchQuery} onChange={setSearchQuery} />
 
         {loading ? (
           <div className="py-6 text-center text-muted-foreground">
@@ -166,40 +162,13 @@ export const SessionSelectDialog = ({
           <div className="py-6">
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
               {filteredSessions.map((session) => (
-                <div
+                <SessionListItem
                   key={session.uuid}
-                  className="flex items-start space-x-4 rounded-lg border p-4"
-                >
-                  <Checkbox
-                    id={session.uuid}
-                    checked={selectedSessions.has(session.uuid)}
-                    onCheckedChange={(checked) => 
-                      handleCheckboxChange(session.uuid, checked as boolean)
-                    }
-                  />
-                  <div className="flex-1 space-y-1">
-                    <label
-                      htmlFor={session.uuid}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      {session.name}
-                    </label>
-                    <div className="text-sm text-muted-foreground">
-                      Status: {session.status}
-                      <br />
-                      <span className="text-xs opacity-50">UUID: {session.uuid}</span>
-                      {session.debugPort && (
-                        <div className="mt-1 flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          <span className="text-xs">Port: {session.debugPort}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {selectedSessions.has(session.uuid) && !startedSessions.has(session.uuid) && (
-                    <Download className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
+                  session={session}
+                  isSelected={selectedSessions.has(session.uuid)}
+                  isStarted={startedSessions.has(session.uuid)}
+                  onSelect={handleCheckboxChange}
+                />
               ))}
             </div>
           </div>
@@ -227,13 +196,30 @@ export const SessionSelectDialog = ({
             >
               Cancel
             </Button>
-            <Button
-              type="button"
-              onClick={handleConfirm}
-              disabled={selectedSessions.size === 0}
-            >
-              Run with Selected Sessions
-            </Button>
+            {allSelectedSessionsStarted ? (
+              <Button
+                type="button"
+                onClick={() => {
+                  const selectedSessionObjects = sessions.filter(session => 
+                    selectedSessions.has(session.uuid)
+                  );
+                  onConfirm(selectedSessionObjects);
+                }}
+                disabled={selectedSessions.size === 0}
+              >
+                Run Workflow
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={handleStartSessions}
+                disabled={selectedSessions.size === 0 || isStarting}
+                className="flex items-center gap-2"
+              >
+                {isStarting ? "Starting..." : "Run Sessions"}
+                {!isStarting && <Download className="h-4 w-4" />}
+              </Button>
+            )}
           </div>
         </DialogFooter>
       </DialogContent>
