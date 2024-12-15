@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Edit, Play, ListBrowser } from "lucide-react";
+import { Plus, Trash2, Edit, Play, MonitorSmartphone } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -87,7 +87,7 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold">My Workflows</h1>
           <div className="flex gap-4">
             <Button onClick={() => navigate('/sessions')} variant="outline">
-              <ListBrowser className="mr-2 h-4 w-4" />
+              <MonitorSmartphone className="mr-2 h-4 w-4" />
               Browser Sessions
             </Button>
             <Button onClick={handleCreate}>
